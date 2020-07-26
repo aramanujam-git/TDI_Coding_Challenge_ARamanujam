@@ -232,25 +232,33 @@ ODIs_AllInfo_T1_50ov = ODIs_AllInfo_WithResult[ODIs_AllInfo_WithResult["T1_Total
 sns.set(style="white", palette="muted", color_codes=True)
 
 df1 = ODIs_AllInfo_T1_50ov[ODIs_AllInfo_T1_50ov['T1_W/L'] == 'W']
-sns.jointplot(
+fig1_1 = sns.jointplot(
     x=df1["T1_TotalScore"], y=df1["WinMargin"], kind='hex', color='b')
+fig1_1.savefig("PLOT1_1.png")
+plt.show()
 
 # Same data with a regression model
-sns.jointplot(
+fig1_2 = sns.jointplot(
     x=df1["T1_TotalScore"], y=df1["WinMargin"], kind='reg', color='b')
+fig1_2.savefig("PLOT1_2.png")
+plt.show()
 
 # PLOT 2
 # Filtering data for Team batting first i.e. Team 1, and completing 50 overs regardless of the outcome.
 # X-axis is the total score after the first 10 overs, Y-axis shows the total score after 50 overs.
 # Does scoring heavily in the first 10 overs with fielding restrictions have an effect on the final score after 50 overs?
-sns.jointplot(
+fig2_1 = sns.jointplot(
     x=ODIs_AllInfo_T1_50ov["T1_Score_10overs"], y=ODIs_AllInfo_T1_50ov["T1_TotalScore"],
     kind='hex', color='r')
+fig2_1.savefig("PLOT2_1.png")
+plt.show()
 
 # Same data with a regression model
-sns.jointplot(
+fig2_2 = sns.jointplot(
     x=ODIs_AllInfo_T1_50ov["T1_Score_10overs"], y=ODIs_AllInfo_T1_50ov["T1_TotalScore"],
     kind='reg', color='r')
+fig2_2.savefig("PLOT2_2.png")
+plt.show()
 
 # PLOT 3
 # Filtering data for Team batting first i.e. Team 1, and completing 50 overs
@@ -282,21 +290,21 @@ T1_YrScoreWinpt = pd.DataFrame(T1_YrScoreWinpt, columns=[
 T1_YrScoreWinpt = T1_YrScoreWinpt[T1_YrScoreWinpt['Year'] != '']
 
 # Box Plot
-fig = go.Figure()
-fig = px.box(T1_YrScoreWinpt, x="Score Range", y="Win Pct", points="all")
-fig.update_layout(title='Win Percentages for Range of Scores - Team Batting First',
+fig3 = go.Figure()
+fig3 = px.box(T1_YrScoreWinpt, x="Score Range", y="Win Pct", points="all")
+fig3.update_layout(title='Win Percentages for Range of Scores - Team Batting First',
                   xaxis_title='Score Range',
                   yaxis_title='Win Percentage')
-fig.show()
+fig3.show()
 
 # PLOT 4
 # History of ODI wins - The best teams between 2006-2020
 TotWins_byCountry = ODIs_AllInfo_WithResult['Winner'].value_counts()
 TotWins_byCountry = pd.DataFrame(TotWins_byCountry).reset_index()
 TotWins_byCountry.columns = ["Country", "Total ODI Wins"]
-fig = px.bar(TotWins_byCountry, x="Country",
+fig4 = px.bar(TotWins_byCountry, x="Country",
              y="Total ODI Wins", color="Total ODI Wins", 
              text='Total ODI Wins', color_continuous_scale=px.colors.sequential.Cividis_r)
-fig.update_traces(textposition='outside')
-fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
-fig.show()
+fig4.update_traces(textposition='outside')
+fig4.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+fig4.show()
