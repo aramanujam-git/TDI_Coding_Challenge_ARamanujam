@@ -1,4 +1,5 @@
 import warnings
+import zipfile
 import os
 import pandas as pd 
 import numpy as np
@@ -19,6 +20,8 @@ warnings.filterwarnings("ignore")
 # %%
 # Function to read all CSV files and parse data
 def ReadCSVfiles(csv_fpath, game_type):
+    with zipfile.ZipFile(csv_fpath + game_type + "\CSVfiles.zip", "r") as zip_ref:
+        zip_ref.extractall(csv_fpath + game_type)
     filenames = glob.glob(csv_fpath + game_type + "\*.csv")
     CSVnames = []
     csv_data = []
