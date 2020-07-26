@@ -1,3 +1,5 @@
+import warnings
+import os
 import pandas as pd 
 import numpy as np
 import matplotlib.pyplot as plt 
@@ -9,8 +11,13 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import math
+import cufflinks as cf
+import chart_studio.plotly as py
+sns.set_style("darkgrid")
+warnings.filterwarnings("ignore")
 
-# Defining a function to read all CSV files and parse data
+# %%
+# Function to read all CSV files and parse data
 def ReadCSVfiles(csv_fpath, game_type):
     filenames = glob.glob(csv_fpath + game_type + "\*.csv")
     CSVnames = []
@@ -30,7 +37,7 @@ def ReadCSVfiles(csv_fpath, game_type):
     games_data_ALL['CSVfname'] = fname_list
     return games_data_ALL, len(filenames), CSVnames
 
-# Defining a function to calculate total scores by Team 1 and Team 2
+# Function to compute details for Team 1 and Team 2
 def MatchInsights(games_data, games_tot, games_ind, games_fnames):
     cols_team1 = ['T1_TeamName', 'T1_TotalScore', 'T1_Wickets', 'T1_TotalOvers',
                   'T1_Score_10overs','T1_TotalRR','T1_10ovRR']
@@ -149,6 +156,7 @@ def MatchInsights(games_data, games_tot, games_ind, games_fnames):
 
     return team1_data, team2_data, match_date, match_MoM
 
+# Function to get match information
 def MatchInfo(AllData, Flag, *ColInfo):
     ColInfo = list(ColInfo)
     info_id = AllData[AllData["inning"].isin(ColInfo)].reset_index()
@@ -158,12 +166,13 @@ def MatchInfo(AllData, Flag, *ColInfo):
         ODI_info = list(info_id["inning"])
     return ODI_info
 
+# %%
 ## MAIN PROGRAM
 
-path = r"C:\Users\aramanujam\Documents\Tha Data Incubator\Cricket\CSV format\MENS"
+path = os.getcwd()
 
 # Parsing data for ODI matches
-ODI_games, ODI_tot, ODI_CSVfnames = ReadCSVfiles(path, '\ODI')
+ODI_games, ODI_tot, ODI_CSVfnames = ReadCSVfiles(path, '\TDI_Cricket_CSVdata\ODI')
 ODI_games_ind = ODI_games[ODI_games['ball'] == "version"].index.tolist()
 ODI_games_ind.append(len(ODI_games))
 ODI_Team1_AllData, ODI_Team2_AllData, ODI_Dates, ODI_MoMs = MatchInsights(ODI_games, ODI_tot, ODI_games_ind, ODI_CSVfnames)
@@ -210,25 +219,81 @@ for i, nm in enumerate(ODIs_AllInfo_WithResult["Winner"]):
 
 ODIs_AllInfo_T1_50ov = ODIs_AllInfo_WithResult[ODIs_AllInfo_WithResult["T1_TotalOvers"] > 49.5]
 
-## PLOTS ##
 
-# Histogram for TotalScores from Team 1 and 2
+# %% TDI CODING CHALLENGE - EXPLORATORY PLOTS
+
+# PLOT 1
+# Filtering data for Team batting first i.e. Team 1, completing 50 overs and winning the game.
+# X-axis is the total score after 50 overs, Y-axis shows the win margin
+# This is to check the hypothesis that the more you score, the more convincingly you win the game (i.e. greater win margin)
+sns.set(style="white", palette="muted", color_codes=True)
+
+df1 = ODIs_AllInfo_T1_50ov[ODIs_AllInfo_T1_50ov['T1_W/L'] == 'W']
+sns.jointplot(
+    x=df1["T1_TotalScore"], y=df1["WinMargin"], kind='hex', color='b')
+
+# Same data with a regression model
+sns.jointplot(
+    x=df1["T1_TotalScore"], y=df1["WinMargin"], kind='reg', color='b')
+
+# PLOT 2
+# Filtering data for Team batting first i.e. Team 1, and completing 50 overs regardless of the outcome.
+# X-axis is the total score after the first 10 overs, Y-axis shows the total score after 50 overs.
+# Does scoring heavily in the first 10 overs with fielding restrictions have an effect on the final score after 50 overs?
+sns.jointplot(
+    x=ODIs_AllInfo_T1_50ov["T1_Score_10overs"], y=ODIs_AllInfo_T1_50ov["T1_TotalScore"],
+    kind='hex', color='r')
+
+# Same data with a regression model
+sns.jointplot(
+    x=ODIs_AllInfo_T1_50ov["T1_Score_10overs"], y=ODIs_AllInfo_T1_50ov["T1_TotalScore"],
+    kind='reg', color='r')
+
+# PLOT 3
+# Filtering data for Team batting first i.e. Team 1, and completing 50 overs
+# Computing the win% for range of scores in steps of 25 runs. 
+# At what total score can you ensure you have atleast 50% chance of winning the game?
+# The box plot indicates that if the team scores atleast 250, their win% is >50% 
+# while scoring >350 runs almost guarantees you a win.
+step = 25
+Score_range = list(np.arange(225, 425, step))
+T1scores_YearlyWinPct = pd.DataFrame(index=Score_range)
+T1_YrScoreWinpt = []
+for yr in range(2006, 2021):
+    T1scores_WinPct = []
+    for i in Score_range:
+        df = ODIs_AllInfo_T1_50ov[(ODIs_AllInfo_T1_50ov['T1_TotalScore'] <= i) &
+                                  (ODIs_AllInfo_T1_50ov['T1_TotalScore'] > i-step) &
+                                  (ODIs_AllInfo_T1_50ov['Date'].dt.year == yr)]
+        if df.empty:
+            T1scores_WinPct.append('')
+            T1_YrScoreWinpt.append(['', '', ''])
+        else:
+            df_WinPct = len(df[df['T1_W/L'] == 'W'])/len(df)*100
+            T1scores_WinPct.append(df_WinPct)
+            T1_YrScoreWinpt.append([yr, str(i-step)+'-'+str(i), df_WinPct])
+    T1scores_YearlyWinPct[str(yr)] = list(T1scores_WinPct)
+
+T1_YrScoreWinpt = pd.DataFrame(T1_YrScoreWinpt, columns=[
+                               'Year', 'Score Range', 'Win Pct'])
+T1_YrScoreWinpt = T1_YrScoreWinpt[T1_YrScoreWinpt['Year'] != '']
+
+# Box Plot
 fig = go.Figure()
-fig.add_trace(go.Histogram(x=ODIs_AllInfo_WithResult['T1_TotalScore'], nbinsx=30))
-fig.add_trace(go.Histogram(x=ODIs_AllInfo_WithResult['T2_TotalScore'], nbinsx=30))
-fig.update_layout(barmode='overlay')  # Overlay both histograms
-fig.update_traces(opacity=0.75)  # Reduce opacity to see both histograms
+fig = px.box(T1_YrScoreWinpt, x="Score Range", y="Win Pct", points="all")
+fig.update_layout(title='Win Percentages for Range of Scores - Team Batting First',
+                  xaxis_title='Score Range',
+                  yaxis_title='Win Percentage')
 fig.show()
 
-fig = px.box(ODIs_AllInfo_WithResult, x="Year", y="T1_TotalScore")
+# PLOT 4
+# History of ODI wins - The best teams between 2006-2020
+TotWins_byCountry = ODIs_AllInfo_WithResult['Winner'].value_counts()
+TotWins_byCountry = pd.DataFrame(TotWins_byCountry).reset_index()
+TotWins_byCountry.columns = ["Country", "Total ODI Wins"]
+fig = px.bar(TotWins_byCountry, x="Country",
+             y="Total ODI Wins", color="Total ODI Wins", 
+             text='Total ODI Wins', color_continuous_scale=px.colors.sequential.Cividis_r)
+fig.update_traces(textposition='outside')
+fig.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
 fig.show()
-
-fig = px.box(ODIs_AllInfo_WithResult, x="Year", y="T2_TotalScore")
-fig.show()
-
-fig = px.scatter(ODIs_AllInfo_WithResult, x="T1_TotalScore", y="T2_TotalScore")
-fig.show()
-
-fig = px.scatter(ODIs_AllInfo_T1_50ov, x="Date", y="T1_TotalScore", color="T1_W/L")
-fig.show()
-
